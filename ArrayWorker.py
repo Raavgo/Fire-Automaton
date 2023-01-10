@@ -48,13 +48,14 @@ def ArrayWorker(array, prob_array, p_grow, p_fire, out_array):
             out_array[x, y] = val_dirt
 
 
+
 @cuda.jit
 def ArrayWorker2(grid, prob_array, p_grow, p_fire, next_grid):
     val_fire = 0xFF0000
     val_tree = 0x00FF00
     val_dirt = 0x0
 
-    neighbors = 0
+    fire = 0
     num_rows, num_cols = grid.shape
 
     row, col = cuda.grid(2)
@@ -72,8 +73,8 @@ def ArrayWorker2(grid, prob_array, p_grow, p_fire, next_grid):
             if nb_row < 0 or nb_row >= num_rows or nb_col < 0 or nb_col >= num_cols:
                 continue
 
-            # Increment the number of live neighbors if the neighbor is alive
-            neighbors += grid[nb_row, nb_col] == val_fire
+            # Increment the number of fire if the neighbor is a fire
+            fire += grid[nb_row, nb_col] == val_fire
 
     if current_val == val_dirt:
         if prob_array[row, col] < p_grow:
@@ -81,7 +82,7 @@ def ArrayWorker2(grid, prob_array, p_grow, p_fire, next_grid):
         else:
             next_grid[row, col] = val_dirt
     elif current_val == val_tree:
-        if neighbors>0 or prob_array[row, col] < p_fire:
+        if fire>0 or prob_array[row, col] < p_fire:
             next_grid[row, col] = val_fire
         else:
             next_grid[row, col] = val_tree
@@ -89,6 +90,7 @@ def ArrayWorker2(grid, prob_array, p_grow, p_fire, next_grid):
         next_grid[row, col] = val_dirt
 
 
+# Use torch.cuda to create the prob array
 def create_prob_array(shape):
     shape = torch.Size(shape)
     x = torch.cuda.FloatTensor(shape)
